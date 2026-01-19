@@ -12,12 +12,12 @@ public class InteractionSetupWizard : EditorWindow
     private const string WindowTitle = "Interaction Setup Wizard";
 
     // Default folders
-    private string rootFolder = "Assets/InteractionSystem";
-    private string runtimeFolder = "Assets/InteractionSystem/Scripts";
-    private string editorFolder = "Assets/InteractionSystem/Editor";
-    private string resourcesFolder = "Assets/InteractionSystem/Resources";
-    private string prefabsFolder = "Assets/InteractionSystem/Prefabs";
-    private string scenesFolder = "Assets/InteractionSystem/Demo";
+    private string rootFolder = "Assets/Snog/InteractionSystem";
+    private string runtimeFolder = "Assets/Snog/InteractionSystem/Scripts";
+    private string editorFolder = "Assets/Snog/InteractionSystem/Editor";
+    private string resourcesFolder = "Assets/Snog/InteractionSystem/Resources";
+    private string prefabsFolder = "Assets/Snog/InteractionSystem/Prefabs";
+    private string scenesFolder = "Assets/Snog/InteractionSystem/Demo";
 
     // Asset names
     private string settingsAssetName = "InteractionSettings.asset";
@@ -26,7 +26,7 @@ public class InteractionSetupWizard : EditorWindow
     private string inputActionReferenceName = "Interact_InputActionReference.asset";
 
     // Options
-    private bool preferTMP = false;                 // auto-detected if TMP is present
+    private bool preferTMP = true;
     private bool useNewInputSystemIfAvailable = true;
     private bool createOrUpdateSettings = true;
     private bool createQuickStartPrefab = true;
