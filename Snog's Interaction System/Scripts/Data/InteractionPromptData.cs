@@ -7,3 +7,4 @@ public struct InteractionPromptData
     public bool showWhenUnavailable;
     public string unavailableLabel;
     public Sprite icon;
+}

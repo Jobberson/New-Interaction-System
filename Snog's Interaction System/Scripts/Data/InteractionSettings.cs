@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "InteractionSettings", menuName = "Interaction/Settings")]
+[CreateAssetMenu(fileName = "InteractionSettings", menuName = "Snog/InteractionSystem/Settings")]
 public class InteractionSettings : ScriptableObject
 {
     [Header("Detection")]
