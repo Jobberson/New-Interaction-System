@@ -439,11 +439,6 @@ public class InteractionSetupWizard : EditorWindow
         ringRect.anchorMax = new Vector2(0.5f, 0f);
         ringRect.pivot = new Vector2(0.5f, 0.5f);
 
-        // Crosshair image (child of prompt for easy show/hide)
-        var crosshairField = promptUIType.GetField("crosshairImage", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-        if (crosshairField != null)
-            crosshairField.SetValue(promptUIComp, crossImg);
-
         // Prompt text (TMP or UGUI)
         Component promptTextComp = null;
         if (useTMP && tmpAvailable)
@@ -517,14 +512,34 @@ public class InteractionSetupWizard : EditorWindow
         // Crosshair
         var crosshairGO = new GameObject("Crosshair");
         crosshairGO.transform.SetParent(canvasGO.transform, false);
+
         var crossImg = crosshairGO.AddComponent<Image>();
-        crossImg.color = new Color(1, 1, 1, 0.75f);
+        crossImg.color = new Color(1f, 1f, 1f, 0.75f);
+
+        // Optional: ensure it actually renders by default
+        crossImg.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+        crossImg.type = Image.Type.Simple;
+
         var cr = crossImg.rectTransform;
         cr.anchorMin = new Vector2(0.5f, 0.5f);
         cr.anchorMax = new Vector2(0.5f, 0.5f);
         cr.pivot = new Vector2(0.5f, 0.5f);
         cr.anchoredPosition = Vector2.zero;
-        cr.sizeDelta = new Vector2(8, 8);
+        cr.sizeDelta = new Vector2(8f, 8f);
+
+        // Wire crosshair into InteractionPromptUI (reflection)
+        if (promptUIType != null && promptUIComp != null)
+        {
+            var crosshairField = promptUIType.GetField(
+                "crosshairImage",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+            );
+
+            if (crosshairField != null)
+            {
+                crosshairField.SetValue(promptUIComp, crossImg);
+            }
+        }
 
         // PlayerInteractor
         var interactorType = GetTypeByName("PlayerInteractor");

@@ -102,11 +102,19 @@ public class PlayerInteractor : MonoBehaviour
 
             showWhenUnavailable = data.showWhenUnavailable;
             isFullSentence = data.isFullSentence;
-
             label = canInteract ? data.label : data.unavailableLabel;
 
-            availableIcon = data.availableIcon != null ? data.availableIcon : data.icon;
-            unavailableIcon = data.unavailableIcon != null ? data.unavailableIcon : data.icon;
+            Sprite fallback = data.icon;
+
+            availableIcon =
+                data.availableIcon != null ? data.availableIcon :
+                fallback != null ? fallback :
+                data.unavailableIcon;
+
+            unavailableIcon =
+                data.un        data.unavailableIcon != null ? data.unavailableIcon :
+                fallback != null ? fallback :
+                data.availableIcon;
         }
 
         if (!canInteract && !showWhenUnavailable)

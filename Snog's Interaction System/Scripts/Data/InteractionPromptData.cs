@@ -11,4 +11,5 @@ public struct InteractionPromptData
     public Sprite availableIcon;
     public Sprite unavailableIcon;
 
+    public Sprite icon;
 }

@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 public class KeycardDoorInteractable : BaseInteractable, ICustomPrompt
@@ -6,6 +5,9 @@ public class KeycardDoorInteractable : BaseInteractable, ICustomPrompt
     [SerializeField] private bool isOpen = false;
     [SerializeField] private bool isLocked = true;
     [SerializeField] private string requiredItem = "Red Keycard";
+
+    [SerializeField] private Sprite openHandIcon;
+    [SerializeField] private Sprite lockIcon;
 
     protected override void PerformInteraction(GameObject interactor)
     {
