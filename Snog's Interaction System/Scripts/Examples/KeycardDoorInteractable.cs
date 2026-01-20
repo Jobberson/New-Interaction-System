@@ -36,9 +36,12 @@ public class KeycardDoorInteractable : BaseInteractable, ICustomPrompt
         {
             label = isOpen ? "Close" : "Open",
             isFullSentence = false,
+
             showWhenUnavailable = isLocked,
             unavailableLabel = $"Locked — Requires {requiredItem}",
-            icon = null
+
+            availableIcon = openHandIcon,
+            unavailableIcon = lockIcon
         };
     }
 }

@@ -84,24 +84,29 @@ public class PlayerInteractor : MonoBehaviour
             promptUI?.Hide();
             holdTimer = 0f;
             promptUI?.SetHoldProgress(0f);
-            promptUI?.ResetCrosshair();
             return;
         }
 
         bool canInteract = current.CanInteract(gameObject);
+
         string label = current.GetInteractionPrompt();
         bool showWhenUnavailable = false;
         bool isFullSentence = false;
-        Sprite icon = null;
+
+        Sprite availableIcon = null;
+        Sprite unavailableIcon = null;
 
         if (current is ICustomPrompt customPrompt)
         {
             InteractionPromptData data = customPrompt.GetPromptData();
+
             showWhenUnavailable = data.showWhenUnavailable;
             isFullSentence = data.isFullSentence;
-            icon = data.icon;
 
             label = canInteract ? data.label : data.unavailableLabel;
+
+            availableIcon = data.availableIcon != null ? data.availableIcon : data.icon;
+            unavailableIcon = data.unavailableIcon != null ? data.unavailableIcon : data.icon;
         }
 
         if (!canInteract && !showWhenUnavailable)
@@ -109,11 +114,11 @@ public class PlayerInteractor : MonoBehaviour
             promptUI?.Hide();
             holdTimer = 0f;
             promptUI?.SetHoldProgress(0f);
-            promptUI?.ResetCrosshair();
             return;
         }
 
-        promptUI?.SetCrosshairIcon(icon, canInteract);
+        Sprite chosenIcon = canInteract ? availableIcon : unavailableIcon;
+        promptUI?.SetCrosshair(chosenIcon, canInteract);
 
         InteractionMode mode = InteractionMode.InheritFromInteractor;
 

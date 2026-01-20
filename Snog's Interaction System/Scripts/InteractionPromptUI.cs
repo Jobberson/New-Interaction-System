@@ -12,19 +12,26 @@ public class InteractionPromptUI : MonoBehaviour
     [Header("Hold")]
     [SerializeField] private Image holdFillImage;
 
-    [Header("Crosshair Icon")]
+    [Header("Crosshair")]
     [SerializeField] private Image crosshairImage;
     [SerializeField] private Sprite defaultCrosshairSprite;
-    [SerializeField] private Color availableColor = new Color(1f, 1f, 1f, 0.75f);
-    [SerializeField] private Color unavailableColor = new Color(1f, 0.35f, 0.25f, 0.85f);
+    [SerializeField] private Color defaultCrosshairColor = new Color(1f, 1f, 1f, 0.75f);
+    [SerializeField] private Color availableColor = new Color(1f, 1f, 1f, 0.95f);
+    [SerializeField] private Color unavailableColor = new Color(1f, 0.35f, 0.25f, 0.95f);
 
     private CanvasGroup canvasGroup;
-    private float targetAlpha = 0f;
+    private float targetAlpha;
 
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
         canvasGroup.alpha = 0f;
+        targetAlpha = 0f;
+
+        if (crosshairImage != null && defaultCrosshairSprite == null)
+        {
+            defaultCrosshairSprite = crosshairImage.sprite;
+        }
 
         SetHoldProgress(0f);
         ResetCrosshair();
@@ -49,6 +56,8 @@ public class InteractionPromptUI : MonoBehaviour
     {
         targetAlpha = 0f;
         SetHoldProgress(0f);
+
+        // Important: do NOT hide the crosshair.
         ResetCrosshair();
     }
 
@@ -68,21 +77,29 @@ public class InteractionPromptUI : MonoBehaviour
         holdFillImage.fillAmount = Mathf.Clamp01(progress01);
     }
 
-    public void SetCrosshairIcon(Sprite icon, bool isAvailable)
+    public void SetCrosshair(Sprite sprite, bool isAvailable)
     {
         if (crosshairImage == null)
         {
             return;
         }
 
-        crosshairImage.sprite = icon != null ? icon : defaultCrosshairSprite;
-        crosshairImage.color = isAvailable ? availableColor : unavailableColor;
+        Sprite chosen = sprite != null ? sprite : defaultCrosshairSprite;
 
-        crosshairImage.enabled = crosshairImage.sprite != null;
+        crosshairImage.sprite = chosen;
+        crosshairImage.color = isAvailable ? availableColor : unavailableColor;
+        crosshairImage.enabled = chosen != null;
     }
 
     public void ResetCrosshair()
     {
-        SetCrosshairIcon(null, true);
+        if (crosshairImage == null)
+        {
+            return;
+        }
+
+        crosshairImage.sprite = defaultCrosshairSprite;
+        crosshairImage.color = defaultCrosshairColor;
+        crosshairImage.enabled = defaultCrosshairSprite != null;
     }
 }
