@@ -524,13 +524,6 @@ public class InteractableScaffolderWindow : EditorWindow
             if (layerIndex >= 0) go.layer = layerIndex;
         }
 
-        // Material
-        if (createSampleMaterial)
-        {
-            var mat = CreateSampleMaterial();
-            ApplyMaterial(go, mat);
-        }
-
         // For Door preset, add Pivot child to rotate
         if (preset == Preset.Door)
         {
@@ -590,42 +583,6 @@ public class InteractableScaffolderWindow : EditorWindow
             default:
                 break;
         }
-    }
-
-    private Material CreateSampleMaterial()
-    {
-        EnsureFolder(materialsFolder);
-        string path = AssetDatabase.GenerateUniqueAssetPath($"{materialsFolder}/M_{className}.mat");
-        var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mat.color = sampleColor;
-        AssetDatabase.CreateAsset(mat, path);
-        return AssetDatabase.LoadAssetAtPath<Material>(path);
-    }
-
-    private void ApplyMaterial(GameObject go, Material mat)
-    {
-        if (mat == null) return;
-
-        var renderer = go.GetComponent<Renderer>();
-        if (renderer == null)
-        {
-            var mf = go.GetComponent<MeshFilter>();
-            if (mf == null)
-            {
-                var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                var mesh = cube.GetComponent<MeshFilter>().sharedMesh;
-                GameObject.DestroyImmediate(cube);
-                mf = go.AddComponent<MeshFilter>();
-                renderer = go.AddComponent<MeshRenderer>();
-                mf.sharedMesh = mesh;
-            }
-            else
-            {
-                renderer = go.GetComponent<MeshRenderer>();
-                if (renderer == null) renderer = go.AddComponent<MeshRenderer>();
-            }
-        }
-        renderer.sharedMaterial = mat;
     }
 
     private int EnsureLayer(string layerName)

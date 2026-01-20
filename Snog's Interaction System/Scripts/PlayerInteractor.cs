@@ -79,30 +79,74 @@ public class PlayerInteractor : MonoBehaviour
                 current.OnFocus(gameObject);
         }
 
-        if (current != null && current.CanInteract(gameObject))
-        {
-            string action = current.GetInteractionPrompt();
-
-            InteractionMode mode = InteractionMode.InheritFromInteractor;
-            if (current is BaseInteractable baseInt)
-                mode = baseInt.GetInteractionMode();
-
-            bool useHold = settings != null && settings.holdToInteract;
-            if (mode == InteractionMode.Press) useHold = false;
-            else if (mode == InteractionMode.Hold) useHold = true;
-
-            string key = GetPromptKeyGlyph();
-            string fmt = useHold ? settings.holdPromptFormat : settings.pressPromptFormat;
-            string message = string.Format(fmt, key, action);
-
-            promptUI?.Show(message);
-        }
-        else
+        if (current == null)
         {
             promptUI?.Hide();
             holdTimer = 0f;
             promptUI?.SetHoldProgress(0f);
+            promptUI?.ResetCrosshair();
+            return;
         }
+
+        bool canInteract = current.CanInteract(gameObject);
+        string label = current.GetInteractionPrompt();
+        bool showWhenUnavailable = false;
+        bool isFullSentence = false;
+        Sprite icon = null;
+
+        if (current is ICustomPrompt customPrompt)
+        {
+            InteractionPromptData data = customPrompt.GetPromptData();
+            showWhenUnavailable = data.showWhenUnavailable;
+            isFullSentence = data.isFullSentence;
+            icon = data.icon;
+
+            label = canInteract ? data.label : data.unavailableLabel;
+        }
+
+        if (!canInteract && !showWhenUnavailable)
+        {
+            promptUI?.Hide();
+            holdTimer = 0f;
+            promptUI?.SetHoldProgress(0f);
+            promptUI?.ResetCrosshair();
+            return;
+        }
+
+        promptUI?.SetCrosshairIcon(icon, canInteract);
+
+        InteractionMode mode = InteractionMode.InheritFromInteractor;
+
+        if (current is BaseInteractable baseInt)
+        {
+            mode = baseInt.GetInteractionMode();
+        }
+
+        bool useHold = settings != null && settings.holdToInteract;
+
+        if (mode == InteractionMode.Press)
+        {
+            useHold = false;
+        }
+        else if (mode == InteractionMode.Hold)
+        {
+            useHold = true;
+        }
+
+        string message;
+
+        if (isFullSentence)
+        {
+            message = label;
+        }
+        else
+        {
+            string key = GetPromptKeyGlyph();
+            string fmt = useHold ? settings.holdPromptFormat : settings.pressPromptFormat;
+            message = string.Format(fmt, key, label);
+        }
+
+        promptUI?.Show(message);
     }
 
     private void UpdateInteraction()

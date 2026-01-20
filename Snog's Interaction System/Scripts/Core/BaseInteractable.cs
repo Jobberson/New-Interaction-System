@@ -1,12 +1,12 @@
-
 using UnityEngine;
+using UnityEngine.Events;
 
 public abstract class BaseInteractable : MonoBehaviour, IInteractable
 {
     [Header("Interactable")]
     [SerializeField] private string prompt = "Interact";
     [SerializeField] private bool isEnabled = true;
-    [SerializeField] private UnityEngine.Events.UnityEvent onInteract;
+    [SerializeField] private UnityEvent onInteract = new UnityEvent();
 
     [Header("Interaction Mode (Override)")]
     [SerializeField] private InteractionMode interactionMode = InteractionMode.InheritFromInteractor;
@@ -35,6 +35,14 @@ public abstract class BaseInteractable : MonoBehaviour, IInteractable
     public virtual void OnDefocus(GameObject interactor)
     {
         // Optional: remove highlight
+    }
+
+    public UnityEvent OnInteractEvent
+    {
+        get
+        {
+            return onInteract;
+        }
     }
 
     public void Interact(GameObject interactor)

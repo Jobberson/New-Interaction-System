@@ -1,175 +1,229 @@
 using UnityEditor;
-using UnityEngine;
 using UnityEditor.Events;
+using UnityEngine;
+using UnityEngine.Events;
 
 [CustomEditor(typeof(BaseInteractable), true)]
+[CanEditMultipleObjects]
 public class BaseInteractableEditor : Editor
 {
     private SerializedProperty spPrompt;
     private SerializedProperty spIsEnabled;
     private SerializedProperty spOnInteract;
 
-    // Optional per-object mode fields if you adopted the override earlier
-    private SerializedProperty spInteractionMode;
-    private SerializedProperty spOverrideHold;
-    private SerializedProperty spHoldSeconds;
-
-    private bool foldPrompt = true;
-    private bool foldMode = true;
-    private bool foldRequirements = false;
-    private bool foldActions = true;
-
     private void OnEnable()
     {
         spPrompt = serializedObject.FindProperty("prompt");
         spIsEnabled = serializedObject.FindProperty("isEnabled");
         spOnInteract = serializedObject.FindProperty("onInteract");
-
-        spInteractionMode = serializedObject.FindProperty("interactionMode");
-        spOverrideHold = serializedObject.FindProperty("overrideHoldDuration");
-        spHoldSeconds = serializedObject.FindProperty("holdDurationSeconds");
     }
 
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
 
-        // Prompt
-        foldPrompt = EditorGUILayout.BeginFoldoutHeaderGroup(foldPrompt, "Prompt");
-        if (foldPrompt)
-        {
-            EditorGUILayout.PropertyField(spPrompt);
-            EditorGUILayout.PropertyField(spIsEnabled);
-            EditorGUILayout.HelpBox("Prompt is the action label used to build the HUD message (e.g., \"Open\"). You can override GetInteractionPrompt() for dynamic text.", MessageType.Info);
-        }
-        EditorGUILayout.EndFoldoutHeaderGroup();
-        EditorGUILayout.Space(4);
+        EditorGUILayout.PropertyField(spPrompt);
+        EditorGUILayout.PropertyField(spIsEnabled);
+        EditorGUILayout.PropertyField(spOnInteract);
 
-        // Mode
-        if (spInteractionMode != null)
+        EditorGUILayout.Space(8);
+        EditorGUILayout.LabelField("Add Common Actions", EditorStyles.boldLabel);
+
+        using (new EditorGUILayout.HorizontalScope())
         {
-            foldMode = EditorGUILayout.BeginFoldoutHeaderGroup(foldMode, "Interaction Mode");
-            if (foldMode)
+            if (GUILayout.Button("▶ Play Audio"))
             {
-                EditorGUILayout.PropertyField(spInteractionMode);
-                using (new EditorGUI.DisabledScope(!spOverrideHold.boolValue))
-                {
-                    // shows even disabled so user sees both fields
-                }
-                EditorGUILayout.PropertyField(spOverrideHold, new GUIContent("Override Hold Duration"));
-                if (spOverrideHold.boolValue)
-                {
-                    EditorGUILayout.PropertyField(spHoldSeconds, new GUIContent("Hold Duration (s)"));
-                }
-                EditorGUILayout.HelpBox("Choose Press, Hold, or InheritFromInteractor. If Hold is selected, you can override the duration here.", MessageType.None);
-            }
-            EditorGUILayout.EndFoldoutHeaderGroup();
-            EditorGUILayout.Space(4);
-        }
-
-        // Requirements (placeholder area for your future Requirement SOs)
-        foldRequirements = EditorGUILayout.BeginFoldoutHeaderGroup(foldRequirements, "Requirements");
-        if (foldRequirements)
-        {
-            EditorGUILayout.HelpBox("Add your Requirement components or ScriptableObjects here (e.g., HasItem, PowerOn, etc.). Then check them inside CanInteract().", MessageType.Info);
-        }
-        EditorGUILayout.EndFoldoutHeaderGroup();
-        EditorGUILayout.Space(4);
-
-        // Actions (UnityEvent)
-        foldActions = EditorGUILayout.BeginFoldoutHeaderGroup(foldActions, "Actions (onInteract)");
-        if (foldActions)
-        {
-            EditorGUILayout.PropertyField(spOnInteract);
-
-            EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField("Add Common Actions", EditorStyles.boldLabel);
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                if (GUILayout.Button("▶ Play Audio"))
-                {
-                    AddPlayAudioAction((BaseInteractable)target);
-                }
-                if (GUILayout.Button("⚙ Animator Trigger"))
-                {
-                    AddAnimatorTriggerAction((BaseInteractable)target);
-                }
-                if (GUILayout.Button("✚ Set Active"))
-                {
-                    AddSetActiveAction((BaseInteractable)target);
-                }
+                AddPlayAudioAction();
             }
 
-            EditorGUILayout.HelpBox("Quick buttons add tiny helper components and bind their methods to onInteract, so designers can create behavior without code.", MessageType.None);
+            if (GUILayout.Button("⚙ Animator Trigger"))
+            {
+                AddAnimatorTriggerAction();
+            }
+
+            if (GUILayout.Button("✚ Set Active"))
+            {
+                AddSetActiveAction();
+            }
         }
-        EditorGUILayout.EndFoldoutHeaderGroup();
 
         serializedObject.ApplyModifiedProperties();
     }
 
-    private void AddPlayAudioAction(BaseInteractable t)
+    private void AddPlayAudioAction()
     {
-        var go = t.gameObject;
-        var action = go.GetComponent<OnInteract_PlayAudio>();
-        if (action == null) action = Undo.AddComponent<OnInteract_PlayAudio>(go);
+        ForEachTargetInteractable(
+            (BaseInteractable interactable) =>
+            {
+                GameObject go = interactable.gameObject;
 
-        var src = go.GetComponent<AudioSource>();
-        if (src == null) src = Undo.AddComponent<AudioSource>(go);
-        action.target = src;
+                var action = go.GetComponent<OnInteract_PlayAudio>();
 
-        // Bind event
-        var ev = spOnInteract;
-        if (ev != null)
+                if (action == null)
+                {
+                    action = Undo.AddComponent<OnInteract_PlayAudio>(go);
+                }
+
+                var src = go.GetComponent<AudioSource>();
+
+                if (src == null)
+                {
+                    src = Undo.AddComponent<AudioSource>(go);
+                }
+
+                Undo.RecordObject(action, "Configure Play Audio Action");
+                action.target = src;
+
+                AddPersistentListenerIfMissing(
+                    interactable.OnInteractEvent,
+                    action,
+                    nameof(OnInteract_PlayAudio.Play),
+                    action.Play
+                );
+
+                MarkDirtyAndPrefab(interactable, action);
+            }
+        );
+    }
+
+    private void AddAnimatorTriggerAction()
+    {
+        ForEachTargetInteractable(
+            (BaseInteractable interactable) =>
+            {
+                GameObject go = interactable.gameObject;
+
+                var action = go.GetComponent<OnInteract_AnimatorTrigger>();
+
+                if (action == null)
+                {
+                    action = Undo.AddComponent<OnInteract_AnimatorTrigger>(go);
+                }
+
+                var anim = go.GetComponent<Animator>();
+
+                if (anim == null)
+                {
+                    anim = Undo.AddComponent<Animator>(go);
+                }
+
+                Undo.RecordObject(action, "Configure Animator Trigger Action");
+                action.animator = anim;
+
+                if (string.IsNullOrEmpty(action.triggerName))
+                {
+                    action.triggerName = "OnInteract";
+                }
+
+                AddPersistentListenerIfMissing(
+                    interactable.OnInteractEvent,
+                    action,
+                    nameof(OnInteract_AnimatorTrigger.Fire),
+                    action.Fire
+                );
+
+                MarkDirtyAndPrefab(interactable, action);
+            }
+        );
+    }
+
+    private void AddSetActiveAction()
+    {
+        ForEachTargetInteractable(
+            (BaseInteractable interactable) =>
+            {
+                GameObject go = interactable.gameObject;
+
+                var action = go.GetComponent<OnInteract_SetActive>();
+
+                if (action == null)
+                {
+                    action = Undo.AddComponent<OnInteract_SetActive>(go);
+                }
+
+                Undo.RecordObject(action, "Configure Set Active Action");
+
+                if (action.targets == null || action.targets.Length == 0)
+                {
+                    action.targets = new GameObject[] { go };
+                }
+
+                action.activeValue = true;
+
+                AddPersistentListenerIfMissing(
+                    interactable.OnInteractEvent,
+                    action,
+                    nameof(OnInteract_SetActive.Apply),
+                    action.Apply
+                );
+
+                MarkDirtyAndPrefab(interactable, action);
+            }
+        );
+    }
+
+    private void ForEachTargetInteractable(System.Action<BaseInteractable> perTarget)
+    {
+        foreach (Object o in targets)
         {
-            UnityEventTools.AddPersistentListener((t as BaseInteractable).GetType()
-                .GetField("onInteract", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                ?.GetValue(t) as UnityEngine.Events.UnityEvent, action.Play);
-            EditorUtility.SetDirty(t);
+            var interactable = o as BaseInteractable;
+
+            if (interactable == null)
+            {
+                continue;
+            }
+
+            Undo.RecordObject(interactable, "Add Interact Action");
+            perTarget.Invoke(interactable);
         }
     }
 
-    private void AddAnimatorTriggerAction(BaseInteractable t)
+    private void AddPersistentListenerIfMissing(UnityEvent evt, Object target, string methodName, UnityAction call)
     {
-        var go = t.gameObject;
-        var action = go.GetComponent<OnInteract_AnimatorTrigger>();
-        if (action == null) action = Undo.AddComponent<OnInteract_AnimatorTrigger>(go);
-
-        var anim = go.GetComponent<Animator>();
-        if (anim == null) anim = Undo.AddComponent<Animator>(go);
-        action.animator = anim;
-        if (string.IsNullOrEmpty(action.triggerName)) action.triggerName = "OnInteract";
-
-        // Bind event
-        var ev = spOnInteract;
-        if (ev != null)
+        if (evt == null)
         {
-            UnityEventTools.AddPersistentListener((t as BaseInteractable).GetType()
-                .GetField("onInteract", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                ?.GetValue(t) as UnityEngine.Events.UnityEvent, action.Fire);
-            EditorUtility.SetDirty(t);
+            return;
         }
+
+        if (HasPersistentListener(evt, target, methodName))
+        {
+            return;
+        }
+
+        UnityEventTools.AddPersistentListener(evt, call);
     }
 
-    private void AddSetActiveAction(BaseInteractable t)
+    private bool HasPersistentListener(UnityEvent evt, Object target, string methodName)
     {
-        var go = t.gameObject;
-        var action = go.GetComponent<OnInteract_SetActive>();
-        if (action == null) action = Undo.AddComponent<OnInteract_SetActive>(go);
+        int count = evt.GetPersistentEventCount();
 
-        if (action.targets == null || action.targets.Length == 0)
+        for (int i = 0; i < count; i++)
         {
-            action.targets = new GameObject[] { go };
+            Object t = evt.GetPersistentTarget(i);
+            string m = evt.GetPersistentMethodName(i);
+
+            if (t == target && m == methodName)
+            {
+                return true;
+            }
         }
-        action.activeValue = true;
 
-        // Bind event
-        var ev = spOnInteract;
-        if (ev != null)
+        return false;
+    }
+
+    private void MarkDirtyAndPrefab(Object a, Object b)
+    {
+        EditorUtility.SetDirty(a);
+        EditorUtility.SetDirty(b);
+
+        if (PrefabUtility.IsPartOfPrefabInstance(a))
         {
-            UnityEventTools.AddPersistentListener((t as BaseInteractable).GetType()
-                .GetField("onInteract", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                ?.GetValue(t) as UnityEngine.Events.UnityEvent, action.Apply);
-            EditorUtility.SetDirty(t);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(a);
+        }
+
+        if (PrefabUtility.IsPartOfPrefabInstance(b))
+        {
+            PrefabUtility.RecordPrefabInstancePropertyModifications(b);
         }
     }
 }

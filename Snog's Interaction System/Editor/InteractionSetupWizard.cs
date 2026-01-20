@@ -422,7 +422,7 @@ public class InteractionSetupWizard : EditorWindow
         promptGO.transform.SetParent(canvasGO.transform, false);
         var cg = promptGO.AddComponent<CanvasGroup>();
 
-        // Background ring (optional hold fill)
+        // Background ring
         var holdRing = new GameObject("HoldRing");
         holdRing.transform.SetParent(promptGO.transform, false);
         var ringImg = holdRing.AddComponent<Image>();
@@ -438,6 +438,11 @@ public class InteractionSetupWizard : EditorWindow
         ringRect.anchorMin = new Vector2(0.5f, 0f);
         ringRect.anchorMax = new Vector2(0.5f, 0f);
         ringRect.pivot = new Vector2(0.5f, 0.5f);
+
+        // Crosshair image (child of prompt for easy show/hide)
+        var crosshairField = promptUIType.GetField("crosshairImage", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        if (crosshairField != null)
+            crosshairField.SetValue(promptUIComp, crossImg);
 
         // Prompt text (TMP or UGUI)
         Component promptTextComp = null;
