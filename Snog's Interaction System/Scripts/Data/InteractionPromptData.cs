@@ -1,15 +1,18 @@
 using UnityEngine;
 
-public struct InteractionPromptData
+namespace Snog.InteractionSystem.Scripts.Data
 {
-    public string label;
-    public bool isFullSentence;
+    public struct InteractionPromptData
+    {
+        public string label;
+        public bool isFullSentence;
 
-    public bool showWhenUnavailable;
-    public string unavailableLabel;
+        public bool showWhenUnavailable;
+        public string unavailableLabel;
 
-    public Sprite availableIcon;
-    public Sprite unavailableIcon;
+        public Sprite availableIcon;
+        public Sprite unavailableIcon;
 
-    public Sprite icon;
+        public Sprite icon;
+    }
 }

@@ -1,4 +1,7 @@
-public interface ICustomPrompt
+namespace Snog.InteractionSystem.Scripts.Interfaces
 {
-    InteractionPromptData GetPromptData();
+    public interface ICustomPrompt
+    {
+        InteractionPromptData GetPromptData();
+    }
 }
