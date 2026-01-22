@@ -1,5 +1,5 @@
 
-# Snog's Interaction System
+# Snog's Interaction System 2
 
 A drop-in, designer-friendly interaction toolkit for Unity.
 Focus objects, show context prompts, support **Press**/**Hold** interactions, and drive an on-screen **crosshair** that swaps to **per-interaction icons** (with optional "unavailable" state icons). Includes a **Setup Wizard**, **Interaction Creator (Scaffolder)**, **QuickStart Prefab**, **demo scene**, and editor **quick-action** buttons.
