@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.Events;
 
+using Snog.InteractionSystem.Scripts.Data;
+using Snog.InteractionSystem.Scripts.Interfaces;
+
 namespace Snog.InteractionSystem.Runtime.Helpers
 {
     public abstract class BaseInteractable : MonoBehaviour, IInteractable
