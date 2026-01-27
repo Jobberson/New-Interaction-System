@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Snog.InteractionSystem.Editor
 {
     [CustomEditor(typeof(PlayerInteractor))]
-    public class PlayerInteractorEditor : Editor
+    public class PlayerInteractorEditor : UnityEditor.Editor
     {
         private SerializedProperty spCamera;
         private SerializedProperty spPromptUI;

@@ -7,7 +7,7 @@ namespace Snog.InteractionSystem.Editor
 {
     [CustomEditor(typeof(BaseInteractable), true)]
     [CanEditMultipleObjects]
-    public class BaseInteractableEditor : Editor
+    public class BaseInteractableEditor : UnityEditor.Editor
     {
         private SerializedProperty spPrompt;
         private SerializedProperty spIsEnabled;
