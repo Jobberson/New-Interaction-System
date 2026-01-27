@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 using Snog.InteractionSystem.Scripts.Data;
 using Snog.InteractionSystem.Scripts.Interfaces;
 
-namespace Snog.InteractionSystem.Scripts
+namespace Snog.InteractionSystem.Scripts.Runtime.Core
 {
     public class PlayerInteractor : MonoBehaviour
     {

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Snog.InteractionSystem.Scripts.Helpers
+namespace Snog.InteractionSystem.Runtime.Helpers
 {
     public class OnInteract_PlayAudio : MonoBehaviour
     {

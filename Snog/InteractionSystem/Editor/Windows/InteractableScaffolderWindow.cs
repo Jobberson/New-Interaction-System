@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Snog.InteractionSystem.Editor
+namespace Snog.InteractionSystem.Editor.Windows
 {
     public class InteractableScaffolderWindow : EditorWindow
     {

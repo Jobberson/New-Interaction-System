@@ -5,7 +5,7 @@ using UnityEditor.Overlays;
 using UnityEditor.Toolbars;
 using UnityEngine;
 
-namespace Snog.InteractionSystem.Editor
+namespace Snog.InteractionSystem.Editor.Inspectors
 {
     [CustomEditor(typeof(PlayerInteractor))]
     public class PlayerInteractorEditor : UnityEditor.Editor

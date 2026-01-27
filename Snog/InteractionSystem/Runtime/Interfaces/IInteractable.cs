@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Snog.InteractionSystem.Scripts.Interfaces
+namespace Snog.InteractionSystem.Runtime.Interfaces
 {
     public interface IInteractable
     {

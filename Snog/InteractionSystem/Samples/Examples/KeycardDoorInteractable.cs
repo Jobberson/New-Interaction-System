@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Snog.InteractionSystem.Scripts.Examples
+namespace Snog.InteractionSystem.Samples.Examples
 {
     public class KeycardDoorInteractable : BaseInteractable, ICustomPrompt
     {

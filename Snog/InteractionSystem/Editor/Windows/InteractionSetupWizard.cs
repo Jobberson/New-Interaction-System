@@ -7,7 +7,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Snog.InteractionSystem.Editor
+namespace Snog.InteractionSystem.Editor.Windows
 {
     public class InteractionSetupWizard : EditorWindow
     {
@@ -15,11 +15,11 @@ namespace Snog.InteractionSystem.Editor
 
         // Default folders
         private string rootFolder = "Assets/Snog/InteractionSystem";
-        private string runtimeFolder = "Assets/Snog/InteractionSystem/Scripts";
+        private string runtimeFolder = "Assets/Snog/InteractionSystem/Runtime";
         private string editorFolder = "Assets/Snog/InteractionSystem/Editor";
         private string resourcesFolder = "Assets/Snog/InteractionSystem/Resources";
         private string prefabsFolder = "Assets/Snog/InteractionSystem/Prefabs";
-        private string scenesFolder = "Assets/Snog/InteractionSystem/Demo";
+        private string scenesFolder = "Assets/Snog/InteractionSystem/Samples/Demo";
 
         // Asset names
         private string settingsAssetName = "InteractionSettings.asset";

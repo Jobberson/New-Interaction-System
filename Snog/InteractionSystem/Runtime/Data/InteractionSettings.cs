@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Snog.InteractionSystem.Scripts.Data
+namespace Snog.InteractionSystem.Runtime.Data
 {
     [CreateAssetMenu(fileName = "InteractionSettings", menuName = "Snog/InteractionSystem/Settings")]
     public class InteractionSettings : ScriptableObject

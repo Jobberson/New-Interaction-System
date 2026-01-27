@@ -3,7 +3,7 @@ using UnityEditor.Events;
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace Snog.InteractionSystem.Editor
+namespace Snog.InteractionSystem.Editor.Inspectors
 {
     [CustomEditor(typeof(BaseInteractable), true)]
     [CanEditMultipleObjects]

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Snog.InteractionSystem.Scripts
+namespace Snog.InteractionSystem.Runtime.Core
 {
     [RequireComponent(typeof(CanvasGroup))]
     public class InteractionPromptUI : MonoBehaviour
