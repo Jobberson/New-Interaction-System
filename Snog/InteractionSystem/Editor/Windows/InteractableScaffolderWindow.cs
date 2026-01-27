@@ -702,17 +702,62 @@ namespace Snog.InteractionSystem.Editor.Windows
             }
         }
 
-        private static Type FindTypeByName(string fullName)
+        private static Type FindTypeByName(string nameOrQualifiedName)
         {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            if (string.IsNullOrWhiteSpace(nameOrQualifiedName))
+                return null;
+
+            // 1) Fast path: works if assembly-qualified or already resolvable
+            Type type = Type.GetType(nameOrQualifiedName);
+            if (type != null)
+                return type;
+
+            // 2) Try exact match via asm.GetType (works for fully qualified names)
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var asm in assemblies)
             {
                 try
                 {
-                    var t = asm.GetType(fullName);
-                    if (t != null) return t;
+                    type = asm.GetType(nameOrQualifiedName);
+                    if (type != null)
+                        return type;
                 }
-                catch { }
+                catch
+                { }
             }
+
+            // 3) Fallback: search by short type name across all assemblies
+            // (handles "PlayerInteractor" instead of "Snog.InteractionSystem.Scripts.PlayerInteractor")
+            foreach (var asm in assemblies)
+            {
+                Type[] types;
+                try
+                {
+                    types = asm.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    types = ex.Types;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (types == null)
+                    continue;
+                
+
+                foreach (var t in types)
+                {
+                    if (t == null)
+                        continue;
+
+                    if (t.Name == nameOrQualifiedName)
+                        return t;
+                }
+            }
+
             return null;
         }
     }
