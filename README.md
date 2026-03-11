@@ -459,8 +459,3 @@ InteractionSystem/
 - **TextMeshPro** (included in Unity — install via Package Manager if missing)
 - **New Input System** *(optional)* — legacy `KeyCode` works out of the box
 
----
-
-## 📄 License
-
-MIT — free to use in personal and commercial projects. See [LICENSE](LICENSE) for details.
