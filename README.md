@@ -4,7 +4,6 @@
 ### A modular, extensible interaction framework for Unity
 
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?logo=unity&logoColor=white)](https://unity.com)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![TextMeshPro](https://img.shields.io/badge/Requires-TextMeshPro-orange)](https://docs.unity3d.com/Packages/com.unity.textmeshpro@latest)
 [![Input System](https://img.shields.io/badge/Input-Legacy%20%2B%20New%20Input%20System-green)](https://docs.unity3d.com/Packages/com.unity.inputsystem@latest)
 
