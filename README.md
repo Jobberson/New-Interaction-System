@@ -1,236 +1,466 @@
+<div align="center">
 
-# Snog's Interaction System 2
+# ⚡ Interaction System
+### A modular, extensible interaction framework for Unity
 
-A drop-in, designer-friendly interaction toolkit for Unity.
-Focus objects, show context prompts, support **Press**/**Hold** interactions, and drive an on-screen **crosshair** that swaps to **per-interaction icons** (with optional "unavailable" state icons). Includes a **Setup Wizard**, **Interaction Creator (Scaffolder)**, **QuickStart Prefab**, **demo scene**, and editor **quick-action** buttons.
+[![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?logo=unity&logoColor=white)](https://unity.com)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TextMeshPro](https://img.shields.io/badge/Requires-TextMeshPro-orange)](https://docs.unity3d.com/Packages/com.unity.textmeshpro@latest)
+[![Input System](https://img.shields.io/badge/Input-Legacy%20%2B%20New%20Input%20System-green)](https://docs.unity3d.com/Packages/com.unity.inputsystem@latest)
 
-> Works with Legacy Input (KeyCode) and the **New Input System**.
-> Designed for quick onboarding **and** scalable production.
+**Beginners get a working interaction system in minutes. Advanced users get a set of clean interfaces to replace any part of it.**
 
----
+[Quick Start](#-quick-start) · [Architecture](#-architecture) · [Detection](#-detection-strategies) · [Conditions](#-interaction-conditions) · [Custom UI](#-custom-prompt-ui) · [Events](#-events) · [API Reference](#-api-reference)
 
-## Features
-
-- **Plug-and-play interactor** using a forward SphereCast from the player camera.
-- **Press / Hold** interaction modes, with per-object **hold-time overrides**.
-- **Prompt UI** with:
-  - Dynamic prompt text (e.g., `"Press E to Open"` / `"Hold E to Save"`),
-  - **Hold progress ring**,
-  - Center **crosshair** that swaps to **available / unavailable icons** per interactable.
-- **Custom prompts** via `ICustomPrompt` + `InteractionPromptData`.
-- **Editor tools**
-  - **Setup Wizard**: creates settings, a QuickStart prefab, optional demo scene.
-  - **Interaction Creator (Scaffolder)**: generates interactable scripts & prefabs from presets (Door, Pickup, etc.).
-  - **Quick Actions** on interactables: one-click **Play Audio**, **Animator Trigger**, **Set Active**, etc.
-- **Extensible API**: `IInteractable`, `BaseInteractable`, and UnityEvents for no-code hooks.
-- **Demo** scene to test immediately.
+</div>
 
 ---
 
-## Requirements
+## ✨ Features
 
-- **Unity**: 2021.3 LTS or newer (recommend LTS).
-  - **Tested on Unity 6 6000.0.62f1** 
----
-
-## Quick Start (60 seconds)
-
-1. **Open the Setup Wizard**  
-   `Tools -> Interaction -> Setup Wizard`
-
-2. Click **Create / Update Assets**  
-   This creates:
-   - `InteractionSettings.asset` (in `Resources/`),
-   - `Interaction_Starter.prefab` (camera + UI + interactor),
-   - Optional `Interaction_Demo.unity`.
-
-3. **Play the demo**  
-   - Click **Open Demo Scene (if created)**, or
-   - Drag **Interaction_Starter.prefab** into any scene and press **Play**.
-
-You should see a **crosshair** in the center. Look at the example object to see a **prompt** (and hold ring if configured). Interact with **E** (or your New Input System binding).
+| | |
+|---|---|
+| 🎯 **SphereCast + Proximity detection** | Forward SphereCast for FPS; nearest-in-radius for top-down/mobile |
+| 🖥️ **Pluggable UI** | Implement `IPromptDisplay` to swap the HUD with zero code changes |
+| 🔌 **Pluggable detection** | Implement `IInteractionDetector` for VR, click-to-interact, or any custom strategy |
+| 📢 **C# events** | `OnFocusChanged` and `OnInteracted` for zero-coupling external systems |
+| ⏱️ **Cooldown & charge system** | Per-object cooldowns and max-use limits, built into the base class |
+| 📋 **ScriptableObject conditions** | Gate any interaction behind designer-friendly condition assets — no code required |
+| 🔀 **Per-object press/hold override** | Individual objects can override the global hold/press mode |
+| 🛠️ **Interactable Scaffolder** | Editor window that generates a full script + prefab from a preset in one click |
+| 🔍 **Live debug overlay** | Runtime HUD shows focus, distance, `CanInteract`, and hold progress |
+| ⌨️ **Dual input support** | Legacy `KeyCode` and Unity's New Input System, auto-detected via compile guards |
+| 📦 **Assembly definitions** | Three `.asmdef` files for clean compile isolation |
 
 ---
 
-## Core Concepts
+## 🚀 Quick Start
 
-### PlayerInteractor
+### 1 — Player setup
 
-The brain of the system:
+Add `PlayerInteractor` to your player GameObject.
 
-- Performs a SphereCast from the **player camera** to find an `IInteractable`.
-- Tracks focus changes (`OnFocus` / `OnDefocus`).
-- Decides whether to **Press** or **Hold** (global setting vs per-object override).
-- Sends prompt text, **hold progress**, and **icon selection** to the UI.
+```
+Player
+ └─ PlayerInteractor ← the driver
+ └─ InteractionDebugOverlay ← optional, toggle with F9
+```
 
-**Key fields (serialized):**
+In the Inspector, assign:
+- **Player Camera** — your main camera
+- **Prompt Display** — an `InteractionPromptUI` component on your HUD canvas
+- **Settings** — an `InteractionSettings` ScriptableObject (create via `Assets › Create › Snog › InteractionSystem › Settings`)
 
-- `playerCamera` - Camera used for ray/SphereCast.
-- `promptUI` - Reference to `InteractionPromptUI`.
-- `settings` - `InteractionSettings` ScriptableObject.
+> **Tip:** Click **"Add Debug Overlay"** in the `PlayerInteractor` inspector to add the runtime HUD in one click.
 
-### InteractionSettings (ScriptableObject)
+---
 
-Global configuration:
+### 2 — Create an interactable
 
-- **Detection**: `interactDistance`, `interactableMask`, `sphereRadius`.
-- **Input**: `interactKey` (Legacy), `holdToInteract`, `holdDuration`.
-- **Prompt**: `pressPromptFormat`, `holdPromptFormat`  
-  (e.g., `"Press {0} to {1}"` => `{0}` = input glyph; `{1}` = action label).
+**Option A — No code (Inspector only)**
 
-> The Setup Wizard creates and assigns this automatically.
+1. Add `BaseInteractable` (or any subclass) to a GameObject.
+2. Add a collider and set its layer to `Interactable`.
+3. Wire up the `onInteract` UnityEvent using the **Add Quick Actions** buttons in the Inspector.
 
-### InteractionPromptUI
+**Option B — Scaffolder (one click)**
 
-Handles on-screen feedback:
+Open `Tools › Interaction › Interactable Scaffolder`, pick a preset (Door, Pickup, Lever…), and click **Create**. A script and prefab are generated automatically.
 
-- `Show(string message)` / `Hide()` - prompt text + fade.
-- `SetHoldProgress(float)` - updates the **radial hold ring**.
-- `SetCrosshair(Sprite, bool isAvailable)` / `ResetCrosshair()` - center icon:
-  - Always visible **by default** (use a default crosshair sprite).
-  - Swaps to the interactable's **available** or **unavailable** icon when focused.
-
-**Assign in prefab/inspector:**
-
-- `promptText` (UGUI Text or TMP variant)
-- `holdFillImage` (radial Image)
-- `crosshairImage` (center Image)
-- `defaultCrosshairSprite` (a small dot/plus sprite)
-
-### IInteractable & BaseInteractable
-
-- `IInteractable` is the minimal contract: prompt text, availability, focus hooks, `Interact`.  
-- `BaseInteractable` implements most of this and adds:
-  - Per-object **Interaction Mode**: `Press`, `Hold`, or `InheritFromInteractor`.
-  - Per-object **hold duration override**.
-  - `OnInteractEvent` (UnityEvent) so designers can hook actions without code.
-
-Derive your own interactables by inheriting `BaseInteractable` and implementing:
+**Option C — Write a subclass**
 
 ```csharp
-protected override void PerformInteraction(GameObject interactor)
+using UnityEngine;
+using Snog.InteractionSystem.Runtime.Helpers;
+
+public class ChestInteractable : BaseInteractable
 {
-    // Your logic here
+    [SerializeField] private GameObject lidPivot;
+    private bool isOpen;
+
+    protected override void Awake()
+    {
+        base.Awake(); // always call — initialises cooldown & use-count state
+    }
+
+    protected override void PerformInteraction(GameObject interactor)
+    {
+        isOpen = !isOpen;
+        lidPivot.transform.localRotation = Quaternion.Euler(isOpen ? -90f : 0f, 0f, 0f);
+    }
+
+    public override string GetInteractionPrompt() => isOpen ? "Close" : "Open";
 }
 ```
 
-### ICustomPrompt & InteractionPromptData
+> `onInteract` fires automatically after `PerformInteraction` returns — don't call it yourself.
 
-For richer prompts & icons, implement `ICustomPrompt`:
+---
+
+### 3 — Layer setup
+
+Create an **Interactable** layer in your project, assign interactable objects to it, then select it in `InteractionSettings › Interactable Mask`.
+
+> The settings inspector warns you if the mask is set to **Everything** (which causes the player's own collider to interfere with detection) or **Nothing**.
+
+---
+
+## 🏗️ Architecture
+
+```
+Runtime/
+ ├─ Interfaces/
+ │ ├─ IInteractable ← core contract (5 methods)
+ │ ├─ IInteractableMode ← optional: per-object press/hold override
+ │ ├─ ICustomPrompt ← optional: rich prompt data (icons, unavailable label)
+ │ ├─ IInteractionDetector ← optional: swap the detection strategy
+ │ └─ IPromptDisplay ← optional: swap the HUD
+ ├─ Core/
+ │ ├─ PlayerInteractor ← the driver; talks only to interfaces
+ │ └─ InteractionPromptUI ← built-in HUD (implements IPromptDisplay)
+ ├─ Helpers/
+ │ ├─ BaseInteractable ← convenience base class (implements IInteractable + IInteractableMode)
+ │ └─ QuickActions/ ← 10 ready-made MonoBehaviours for common onInteract responses
+ ├─ Detection/
+ │ ├─ RaycastDetector ← forward SphereCast (default, FPS)
+ │ └─ ProximityDetector ← nearest in radius (top-down, mobile)
+ ├─ Conditions/
+ │ ├─ InteractionCondition ← abstract ScriptableObject base
+ │ ├─ RequiresConditions ← MonoBehaviour that gates CanInteract()
+ │ ├─ GameObjectActiveCondition
+ │ └─ InvertCondition
+ ├─ Data/
+ │ ├─ InteractionSettings ← ScriptableObject: distance, mask, input, prompt format
+ │ ├─ InteractionMode ← enum: InheritFromInteractor / Press / Hold
+ │ └─ InteractionPromptData ← struct: label, icons, unavailable state
+ └─ Debug/
+     └─ InteractionDebugOverlay ← runtime HUD, safe in builds
+```
+
+The entire system is driven by **interfaces**. `PlayerInteractor` never holds a concrete reference to a detector, a prompt UI, or a `BaseInteractable` — only to `IInteractable`, `IInteractionDetector`, and `IPromptDisplay`. You can replace any layer without modifying the core.
+
+---
+
+## 🎛️ InteractionSettings
+
+Create via `Assets › Create › Snog › InteractionSystem › Settings`.
+
+| Field | Default | Description |
+|---|---|---|
+| `interactDistance` | `3.0` | Max range of the SphereCast |
+| `interactableMask` | `Default` | Layers to detect — **don't use Everything** |
+| `sphereRadius` | `0.05` | Cast radius — increase for easier aiming |
+| `triggerInteraction` | `Ignore` | Whether trigger colliders are detected |
+| `interactKey` | `E` | Legacy input fallback key |
+| `holdToInteract` | `false` | Global press/hold mode |
+| `holdDuration` | `0.5` | Seconds to hold (overridable per object) |
+| `pressPromptFormat` | `[{0}] {1}` | `{0}` = key glyph, `{1}` = action label |
+| `holdPromptFormat` | `Hold [{0}] to {1}` | Same tokens |
+
+---
+
+## 📡 Detection Strategies
+
+### Built-in: RaycastDetector *(default)*
+Forward SphereCast from the player camera. Best for FPS and third-person shooters.
+
+```
+Player
+ └─ PlayerInteractor (Detector slot: RaycastDetector)
+ └─ RaycastDetector
+```
+
+### Built-in: ProximityDetector
+Selects the nearest `IInteractable` within a configurable radius using `OverlapSphereNonAlloc`. Best for top-down RPGs, isometric games, and mobile games with a single interact button.
+
+```
+Player
+ └─ PlayerInteractor (Detector slot: ProximityDetector)
+ └─ ProximityDetector (Radius: 2.5)
+```
+
+Both can be added via the **Detection** panel in the `PlayerInteractor` inspector — no drag-and-drop needed.
+
+### Custom detector
 
 ```csharp
-public InteractionPromptData GetPromptData()
+using UnityEngine;
+using Snog.InteractionSystem.Runtime.Interfaces;
+
+// Click-to-interact example
+public class MouseClickDetector : MonoBehaviour, IInteractionDetector
 {
-    return new InteractionPromptData
+    [SerializeField] private Camera cam;
+    [SerializeField] private LayerMask mask;
+
+    public IInteractable FindInteractable()
     {
-        label = "Open",
-        isFullSentence = false,
-        showWhenUnavailable = isLocked,
-        unavailableLabel = "Locked — Requires Red Keycard",
-        availableIcon = handIcon,
-        unavailableIcon = lockIcon,
-        icon = handIcon // optional single-icon fallback
+        if (!Input.GetMouseButtonDown(0)) return null;
+        var ray = cam.ScreenPointToRay(Input.mousePosition);
+        if (!Physics.Raycast(ray, out RaycastHit hit, 100f, mask)) return null;
+        return hit.collider.GetComponentInParent<IInteractable>();
+    }
+}
+```
+
+Attach it to any GameObject, then drag it into the **Detector** slot on `PlayerInteractor`.
+
+---
+
+## 🎨 Custom Prompt UI
+
+Implement `IPromptDisplay` on any `MonoBehaviour` and assign it to **Prompt Display** on `PlayerInteractor`.
+
+```csharp
+using UnityEngine;
+using Snog.InteractionSystem.Runtime.Interfaces;
+
+// World-space floating label example
+public class WorldSpacePromptUI : MonoBehaviour, IPromptDisplay
+{
+    [SerializeField] private TextMeshPro label;
+    [SerializeField] private Transform targetObject;
+
+    public void Show(string message)
+    {
+        label.text = message;
+        label.gameObject.SetActive(true);
+        transform.position = targetObject.position + Vector3.up * 1.5f;
+    }
+
+    public void Hide() => label.gameObject.SetActive(false);
+    public void SetImmediate(bool visible) => label.gameObject.SetActive(visible);
+    public void SetHoldProgress(float progress01) { /* optional */ }
+    public void SetCrosshair(Sprite s, bool avail) { /* optional */ }
+    public void ResetCrosshair() { /* optional */ }
+}
+```
+
+---
+
+## 📋 Interaction Conditions
+
+Gate any interactable behind designer-configured `ScriptableObject` conditions — **no code required**.
+
+### Setup
+
+1. Create a condition asset via `Assets › Create › Snog › InteractionSystem › Conditions › ...`
+2. Add a `RequiresConditions` component to your interactable GameObject.
+3. Drag the condition asset into the **Conditions** list.
+4. Choose **AND** (all must pass) or **OR** (any one passing is enough).
+
+### Built-in conditions
+
+| Condition | Description |
+|---|---|
+| `GameObjectActiveCondition` | Passes when a target GameObject is active (or inactive) |
+| `InvertCondition` | Flips any other condition — passes when it fails, fails when it passes |
+
+### Custom condition
+
+```csharp
+using UnityEngine;
+using Snog.InteractionSystem.Runtime.Conditions;
+
+[CreateAssetMenu(menuName = "Interaction/Conditions/Has Item")]
+public class HasItemCondition : InteractionCondition
+{
+    [SerializeField] private string requiredItemId;
+
+    public override bool Evaluate(GameObject interactor)
+    {
+        // plug into your inventory system
+        return Inventory.Instance.Has(requiredItemId);
+    }
+
+    public override string GetFailureReason() =>
+        $"Requires {requiredItemId}";
+}
+```
+
+The `RequiresConditions` inspector shows a **live pass/fail status** for each condition during Play Mode.
+
+---
+
+## 📢 Events
+
+Subscribe to `PlayerInteractor`'s C# events for zero-coupling integration with external systems.
+
+```csharp
+void Start()
+{
+    var interactor = GetComponent<PlayerInteractor>();
+
+    // Fires whenever the focused object changes (either value may be null)
+    interactor.OnFocusChanged += (prev, next) =>
+    {
+        if (next != null)
+            tutorialManager.OnPlayerLookedAt(next);
+    };
+
+    // Fires after every completed interaction
+    interactor.OnInteracted += interactable =>
+    {
+        questManager.NotifyInteraction(interactable);
+        achievementTracker.Track(interactable);
+        audioManager.PlayInteractSfx();
     };
 }
 ```
 
-- `availableIcon`/`unavailableIcon` power the **center crosshair** when focused.
-- `showWhenUnavailable` + `unavailableLabel` let the UI show a **“blocked”** message.
-- If only one icon is assigned, the system can **fallback** to use it for both states.
+No `UnityEvent` wiring in the Inspector — subscribe in code and stay decoupled.
 
 ---
 
-## Editor Tools
+## ⏱️ Cooldown & Charges
 
-### Setup Wizard
+Configure per-object on any `BaseInteractable` subclass — no code needed.
 
-- Creates **Settings**, **QuickStart Prefab**, and an optional **Demo Scene**.
-- Optionally generates a basic **InputActionAsset** and assigns an **InputActionReference** for the New Input System.
+| Setting | Description |
+|---|---|
+| **Cooldown (s)** | Seconds before the object can be used again. `0` = no cooldown. |
+| **Max Uses** | How many times it can be triggered total. `-1` = unlimited. |
 
-### Scaffolder
+The inspector shows a plain-English summary: *"Up to 3 use(s) with 2.0s cooldown"*. During Play Mode, a live panel shows cooldown remaining and uses left.
 
-`Tools -> Interaction -> Interactable Scaffolder (Extended)`
-
-- Choose a preset (Door, Pickup, Lever, Readable, Button, SceneLoader, SavePoint, Custom).
-- Generates:
-  - A script inheriting `BaseInteractable` with sensible defaults.
-  - An optional prefab (with collider/material).
-- Great for standardizing interactables across a team.
-
-### BaseInteractable Editor (Quick Actions)
-
-In the inspector for any `BaseInteractable`, add common actions with one click:
-
-- **Play Audio** - adds/assigns `AudioSource` & binds to `OnInteractEvent`.
-- **Animator Trigger** - adds/assigns `Animator` & triggers a named parameter.
-- **Set Active** - toggles or sets active state on target GameObjects.
-
-Built with **Undo**, **Prefab override** support, and **duplicate guard** for listeners.
+```csharp
+// Runtime API
+interactable.CooldownRemaining // float — seconds left on cooldown
+interactable.UsesRemaining // int — uses left (-1 if unlimited)
+interactable.ResetCooldown(); // clears the cooldown immediately
+interactable.ResetUses(); // restores uses to max
+```
 
 ---
 
-## Input Support
+## 🧩 Quick Actions
 
-- **Legacy Input**: uses `KeyCode` (e.g., `E`).
-- **New Input System**:
-  - Assign an `InputActionReference` to the interactor (Wizard can generate one).
-  - `GetBindingDisplayString()` is used for the `{0}` in your prompt formats to display a platform-appropriate glyph when possible.
+Ten ready-made components you can add via the **Add Quick Actions** buttons in the `BaseInteractable` inspector. Each is auto-wired to `onInteract`.
 
----
-
-## Demo Scene
-
-Open **Interaction_Demo.unity** to see:
-
-- A basic environment
-- The **Interaction_Starter** prefab in action
-- An example interactable with prompt and hold behavior
-
----
-
-## Layers
-
-The Wizard will ensure an **"Interactable"** layer exists and include it in `InteractionSettings.interactableMask`.  
-Add your interactable objects to this layer (or include your object's layer in the mask).
+| Component | Does |
+|---|---|
+| `OnInteract_PlayAudio` | Plays an `AudioSource` |
+| `OnInteract_AnimatorTrigger` | Sets an `Animator` trigger |
+| `OnInteract_SetActive` | Sets GameObjects active/inactive |
+| `OnInteract_ToggleActive` | Toggles GameObject active state |
+| `OnInteract_EnableComponent` | Enables `Behaviour` components |
+| `OnInteract_DisableComponent` | Disables `Behaviour` components |
+| `OnInteract_InvokeEvent` | Fires a standalone `UnityEvent` |
+| `OnInteract_ReloadScene` | Reloads the active scene |
+| `OnInteract_QuitApplication` | Quits the application |
+| `OnInteract_DebugLog` | Prints a message to the Console |
 
 ---
 
-## Best Practices
+## 🔌 Implementing IInteractable Directly
 
-- **Default crosshair**: assign a small sprite (e.g., a dot) to `defaultCrosshairSprite`.
-- **Icon sizing**: keep crosshair small when idle (8-12 px); your per-interaction icons can be larger (24-32 px) if desired.
-- **Performance**: SphereCast once per frame from the camera; keep interaction distance modest (2-4 m) and mask tight.
-- **Designer workflow**: prefer `BaseInteractable` + **Quick Actions** for no-code behavior. Use `ICustomPrompt` for bespoke states/messages/icons.
+Skip `BaseInteractable` entirely for full control:
+
+```csharp
+using UnityEngine;
+using Snog.InteractionSystem.Runtime.Data;
+using Snog.InteractionSystem.Runtime.Interfaces;
+
+public class TripwireTrap : MonoBehaviour, IInteractable, IInteractableMode, ICustomPrompt
+{
+    private bool armed = true;
+
+    // IInteractable
+    public string GetInteractionPrompt() => armed ? "Disarm" : "(disarmed)";
+    public bool CanInteract(GameObject g) => armed;
+    public void OnFocus(GameObject g) { /* show glow */ }
+    public void OnDefocus(GameObject g) { /* hide glow */ }
+    public void Interact(GameObject g) { armed = false; }
+
+    // IInteractableMode — force hold-to-disarm regardless of global setting
+    public InteractionMode GetInteractionMode() => InteractionMode.Hold;
+    public bool TryGetHoldDuration(out float s) { s = 2f; return true; }
+
+    // ICustomPrompt — red lock icon when unavailable
+    public InteractionPromptData GetPromptData() => new InteractionPromptData
+    {
+        label = "Disarm",
+        showWhenUnavailable = true,
+        unavailableLabel = "(already disarmed)",
+        availableIcon = disarmIcon,
+    };
+    [SerializeField] private Sprite disarmIcon;
+}
+```
 
 ---
 
-## Extending
+## 📖 API Reference
 
-- **Custom UI**: replicate `InteractionPromptUI` in TMP or your own style; wire fields (text, ring, crosshair).
-- **New interactables**: inherit `BaseInteractable` and implement `PerformInteraction`.
-- **Conditional availability**: override `CanInteract()` and/or implement `ICustomPrompt` to surface "blocked" reasons & icons.
-- **Scaffolder presets**: add your own presets for your project's common patterns.
+### `PlayerInteractor`
+
+| Member | Description |
+|---|---|
+| `IInteractable CurrentInteractable` | The object currently in focus, or `null` |
+| `float HoldTimer` | Seconds the button has been held this cycle |
+| `InteractionSettings Settings` | The active settings asset |
+| `Camera PlayerCamera` | The camera used for built-in detection |
+| `event OnFocusChanged(prev, next)` | Fires when focused object changes |
+| `event OnInteracted(interactable)` | Fires after each completed interaction |
+
+### `BaseInteractable`
+
+| Member | Description |
+|---|---|
+| `void SetEnabled(bool)` | Enable/disable at runtime |
+| `float CooldownRemaining` | Seconds left on cooldown (`0` if not cooling down) |
+| `int UsesRemaining` | Uses left (`-1` if unlimited) |
+| `bool HasUnlimitedUses` | `true` when `maxUses == -1` |
+| `void ResetCooldown()` | Clears the cooldown immediately |
+| `void ResetUses()` | Restores uses to the configured max |
+| `UnityEvent OnInteractEvent` | The `onInteract` event (for editor tooling) |
+| `protected abstract void PerformInteraction(GameObject)` | Your interaction logic goes here |
+
+### `RequiresConditions`
+
+| Member | Description |
+|---|---|
+| `bool Evaluate(GameObject)` | Evaluates all conditions using AND/OR logic |
+| `string GetFirstFailureReason(GameObject)` | Returns the first failing condition's reason string |
+| `InteractionCondition[] Conditions` | Read-only access to the condition list |
+| `bool RequireAll` | `true` = AND, `false` = OR |
 
 ---
 
-## Troubleshooting
+## 📁 Project Structure
 
-- **No crosshair shown**  
-  Ensure the crosshair `Image` has a sprite or `defaultCrosshairSprite` is assigned. The UI disables the image if there's no sprite.
+```
+InteractionSystem/
+ ├─ Runtime/
+ │ ├─ Snog.InteractionSystem.Runtime.asmdef
+ │ ├─ Core/ PlayerInteractor, InteractionPromptUI
+ │ ├─ Interfaces/ IInteractable, IInteractableMode, ICustomPrompt,
+ │ │ IInteractionDetector, IPromptDisplay
+ │ ├─ Helpers/ BaseInteractable, QuickActions/
+ │ ├─ Detection/ RaycastDetector, ProximityDetector
+ │ ├─ Conditions/ InteractionCondition, RequiresConditions,
+ │ │ GameObjectActiveCondition, InvertCondition
+ │ ├─ Data/ InteractionSettings, InteractionMode, InteractionPromptData
+ │ └─ Debug/ InteractionDebugOverlay
+ ├─ Editor/
+ │ ├─ Snog.InteractionSystem.Editor.asmdef
+ │ ├─ Inspectors/ Custom inspectors for all runtime types
+ │ └─ Windows/ InteractableScaffolderWindow
+ └─ Samples/
+     ├─ Snog.InteractionSystem.Samples.asmdef
+     └─ Examples/ KeycardDoorInteractable (full ICustomPrompt demo)
+```
 
-- **Prompt not showing**  
-  Check:
-  - `InteractionSettings.interactableMask` includes your object's layer,
-  - The object has a collider,
-  - `CanInteract()` returns `true` (or `showWhenUnavailable = true` if blocked).
+---
 
-- **Hold interaction never completes**  
-  Verify the effective hold time:
-  - Global `holdDuration` in `InteractionSettings`,
-  - Per-object override in `BaseInteractable` if enabled.
+## 🔧 Requirements
 
-- **New Input System not responding**  
-  Confirm:
-  - `ENABLE_INPUT_SYSTEM` is defined (Project Settings -> Player -> Scripting Define Symbols),
-  - The `InputActionReference` is assigned and the action is **enabled**,
-  - The Interact binding is present (Keyboard/Gamepad).
+- **Unity** 2021.3 LTS or newer
+- **TextMeshPro** (included in Unity — install via Package Manager if missing)
+- **New Input System** *(optional)* — legacy `KeyCode` works out of the box
+
+---
+
+## 📄 License
+
+MIT — free to use in personal and commercial projects. See [LICENSE](LICENSE) for details.
