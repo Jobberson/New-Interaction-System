@@ -1,6 +1,6 @@
 using UnityEngine;
 
-using Snog.InteractionSystem.Scripts.Data;
+using Snog.InteractionSystem.Runtime.Data;
 
 namespace Snog.InteractionSystem.Samples.Examples
 {

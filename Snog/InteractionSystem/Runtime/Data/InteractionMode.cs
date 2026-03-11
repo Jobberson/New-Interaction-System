@@ -1,7 +1,7 @@
 
 using System;
 
-namespace Snog.InteractionSystem.Scripts.Data
+namespace Snog.InteractionSystem.Runtime.Data
 {
     /// <summary>
     /// Defines how an interaction should be triggered.
