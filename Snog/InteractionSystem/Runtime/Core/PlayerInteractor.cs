@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 #if ENABLE_INPUT_SYSTEM
@@ -9,287 +10,318 @@ using Snog.InteractionSystem.Runtime.Interfaces;
 
 namespace Snog.InteractionSystem.Runtime.Core
 {
+    /// <summary>
+    /// Main driver. Attach to your player GameObject.
+    /// Each frame: detects the nearest interactable, drives focus/defocus, updates the prompt UI,
+    /// and dispatches interactions on press or hold.
+    ///
+    /// <para><b>Extending detection:</b> Assign any MonoBehaviour that implements
+    /// <see cref="IInteractionDetector"/> to the "Detector" slot. Built-in options are
+    /// RaycastDetector and ProximityDetector. If left empty, the built-in SphereCast is used.</para>
+    ///
+    /// <para><b>Extending the UI:</b> Assign any MonoBehaviour that implements
+    /// <see cref="IPromptDisplay"/> to the "Prompt Display" slot. InteractionPromptUI is the
+    /// built-in implementation.</para>
+    ///
+    /// <para><b>Reacting to events:</b> Subscribe to <see cref="OnFocusChanged"/> and
+    /// <see cref="OnInteracted"/> for zero-coupling integration with quest systems,
+    /// audio managers, tutorials, and achievement trackers.</para>
+    /// </summary>
+    [AddComponentMenu("Interaction/Player Interactor")]
+    [DisallowMultipleComponent]
     public class PlayerInteractor : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("Camera used for built-in SphereCast detection. " +
+                 "Not needed when a custom IInteractionDetector is assigned.")]
         [SerializeField] private Camera playerCamera;
-        [SerializeField] private InteractionPromptUI promptUI;
+
+        [Tooltip("MonoBehaviour that implements IPromptDisplay. " +
+                 "Assign an InteractionPromptUI or any custom prompt component.")]
+        [SerializeField] private MonoBehaviour promptDisplaySource;
+
         [SerializeField] private InteractionSettings settings;
 
-    #if ENABLE_INPUT_SYSTEM
+        [Header("Custom Detector (optional)")]
+        [Tooltip("MonoBehaviour that implements IInteractionDetector. " +
+                 "Leave empty to use the built-in forward SphereCast.")]
+        [SerializeField] private MonoBehaviour detectorSource;
+
+#if ENABLE_INPUT_SYSTEM
         [Header("Input (New Input System)")]
-        [Tooltip("If assigned, this action will be used for interaction. If left null, the component falls back to Legacy Input (KeyCode).")]
+        [Tooltip("Assign an InputActionReference to use the New Input System. " +
+                 "Leave empty to fall back to the legacy KeyCode set in InteractionSettings.")]
         [SerializeField] private InputActionReference interactAction;
-    #endif
+#endif
 
-        private IInteractable current;
-        private float holdTimer = 0f;
+        // ── Events ────────────────────────────────────────────────────────────────
 
-        private void Reset()
+        /// <summary>
+        /// Fired when the focused interactable changes (including when focus is lost).
+        /// Parameters: (previousInteractable, newInteractable) — either may be null.
+        ///
+        /// <code>
+        /// playerInteractor.OnFocusChanged += (prev, next) =>
+        /// {
+        ///     if (next != null) Debug.Log("Now looking at: " + (next as Component)?.name);
+        /// };
+        /// </code>
+        /// </summary>
+        public event Action<IInteractable, IInteractable> OnFocusChanged;
+
+        /// <summary>
+        /// Fired immediately after an interaction completes (after the interactable's
+        /// Interact() method returns).
+        ///
+        /// <code>
+        /// playerInteractor.OnInteracted += interactable =>
+        ///     questManager.NotifyInteraction(interactable);
+        /// </code>
+        /// </summary>
+        public event Action<IInteractable> OnInteracted;
+
+        // ── Private state ─────────────────────────────────────────────────────────
+
+        private IInteractable       current;
+        private float               holdTimer;
+        private IPromptDisplay      promptDisplay;
+        private IInteractionDetector customDetector;
+
+        // ── Public read-only state ────────────────────────────────────────────────
+
+        /// <summary>The interactable currently in focus, or null.</summary>
+        public IInteractable CurrentInteractable => current;
+
+        /// <summary>Seconds the interact button has been held this cycle.</summary>
+        public float HoldTimer => holdTimer;
+
+        /// <summary>The active InteractionSettings asset.</summary>
+        public InteractionSettings Settings => settings;
+
+        /// <summary>The camera used for built-in detection.</summary>
+        public Camera PlayerCamera => playerCamera;
+
+        // ──────────────────────────────────────────────────────────────────────────
+
+        private void Reset() { playerCamera = Camera.main; }
+
+        private void Awake()
         {
-            playerCamera = Camera.main;
+            promptDisplay  = promptDisplaySource  as IPromptDisplay;
+            customDetector = detectorSource       as IInteractionDetector;
+
+            if (promptDisplaySource != null && promptDisplay == null)
+                Debug.LogWarning($"[PlayerInteractor] '{promptDisplaySource.GetType().Name}' does not implement IPromptDisplay.", this);
+
+            if (detectorSource != null && customDetector == null)
+                Debug.LogWarning($"[PlayerInteractor] '{detectorSource.GetType().Name}' does not implement IInteractionDetector.", this);
         }
 
         private void OnEnable()
         {
-    #if ENABLE_INPUT_SYSTEM
-            if (interactAction != null && interactAction.action != null)
-            {
-                interactAction.action.Enable();
-            }
-    #endif
+#if ENABLE_INPUT_SYSTEM
+            interactAction?.action?.Enable();
+#endif
         }
 
         private void OnDisable()
         {
             if (current != null)
             {
+                var prev = current;
                 current.OnDefocus(gameObject);
                 current = null;
+                OnFocusChanged?.Invoke(prev, null);
             }
-
-            promptUI?.Hide();
+            promptDisplay?.Hide();
             holdTimer = 0f;
 
-    #if ENABLE_INPUT_SYSTEM
-            if (interactAction != null && interactAction.action != null)
-            {
-                interactAction.action.Disable();
-            }
-    #endif
+#if ENABLE_INPUT_SYSTEM
+            interactAction?.action?.Disable();
+#endif
         }
 
         private void Update()
         {
-            if (playerCamera == null || settings == null)
-                return;
-
+            if (settings == null) return;
+            if (customDetector == null && playerCamera == null) return;
             UpdateFocus();
             UpdateInteraction();
         }
 
+        // ── Focus ─────────────────────────────────────────────────────────────────
+
         private void UpdateFocus()
         {
-            IInteractable found = FindInteractableInView();
+            IInteractable found = customDetector != null
+                ? customDetector.FindInteractable()
+                : BuiltInSphereCast();
 
             if (!ReferenceEquals(found, current))
             {
-                if (current != null)
-                    current.OnDefocus(gameObject);
-
+                var prev = current;
+                current?.OnDefocus(gameObject);
                 current = found;
-
-                if (current != null)
-                    current.OnFocus(gameObject);
+                current?.OnFocus(gameObject);
+                OnFocusChanged?.Invoke(prev, current);
             }
 
             if (current == null)
             {
-                promptUI?.Hide();
+                promptDisplay?.Hide();
                 holdTimer = 0f;
-                promptUI?.SetHoldProgress(0f);
                 return;
             }
 
             bool canInteract = current.CanInteract(gameObject);
 
-            string label = current.GetInteractionPrompt();
-            bool showWhenUnavailable = false;
-            bool isFullSentence = false;
-
-            Sprite availableIcon = null;
-            Sprite unavailableIcon = null;
+            string label             = current.GetInteractionPrompt();
+            bool   showWhenUnavail   = false;
+            bool   isFullSentence    = false;
+            Sprite availableIcon     = null;
+            Sprite unavailableIcon   = null;
 
             if (current is ICustomPrompt customPrompt)
             {
                 InteractionPromptData data = customPrompt.GetPromptData();
+                showWhenUnavail  = data.showWhenUnavailable;
+                isFullSentence   = data.isFullSentence;
+                label            = canInteract ? data.label : data.unavailableLabel;
 
-                showWhenUnavailable = data.showWhenUnavailable;
-                isFullSentence = data.isFullSentence;
-                label = canInteract ? data.label : data.unavailableLabel;
-
-                Sprite fallback = data.icon;
-
-                availableIcon =
-                    data.availableIcon != null ? data.availableIcon :
-                    fallback != null ? fallback :
-                    data.unavailableIcon;
-
-                unavailableIcon =
-                    data.un        data.unavailableIcon != null ? data.unavailableIcon :
-                    fallback != null ? fallback :
-                    data.availableIcon;
+                Sprite fallback  = data.icon;
+                availableIcon    = data.availableIcon   ?? fallback ?? data.unavailableIcon;
+                unavailableIcon  = data.unavailableIcon ?? fallback ?? data.availableIcon;
             }
 
-            if (!canInteract && !showWhenUnavailable)
+            if (!canInteract && !showWhenUnavail)
             {
-                promptUI?.Hide();
+                promptDisplay?.Hide();
                 holdTimer = 0f;
-                promptUI?.SetHoldProgress(0f);
                 return;
             }
 
-            Sprite chosenIcon = canInteract ? availableIcon : unavailableIcon;
-            promptUI?.SetCrosshair(chosenIcon, canInteract);
+            promptDisplay?.SetCrosshair(canInteract ? availableIcon : unavailableIcon, canInteract);
 
-            InteractionMode mode = InteractionMode.InheritFromInteractor;
+            bool useHold = ResolveUseHold();
+            string message = isFullSentence
+                ? label
+                : string.Format(
+                    useHold ? settings.holdPromptFormat : settings.pressPromptFormat,
+                    GetPromptKeyGlyph(),
+                    label);
 
-            if (current is BaseInteractable baseInt)
-            {
-                mode = baseInt.GetInteractionMode();
-            }
-
-            bool useHold = settings != null && settings.holdToInteract;
-
-            if (mode == InteractionMode.Press)
-            {
-                useHold = false;
-            }
-            else if (mode == InteractionMode.Hold)
-            {
-                useHold = true;
-            }
-
-            string message;
-
-            if (isFullSentence)
-            {
-                message = label;
-            }
-            else
-            {
-                string key = GetPromptKeyGlyph();
-                string fmt = useHold ? settings.holdPromptFormat : settings.pressPromptFormat;
-                message = string.Format(fmt, key, label);
-            }
-
-            promptUI?.Show(message);
+            promptDisplay?.Show(message);
         }
+
+        // ── Interaction ───────────────────────────────────────────────────────────
 
         private void UpdateInteraction()
         {
-            if (current == null || !current.CanInteract(gameObject))
-                return;
+            if (current == null || !current.CanInteract(gameObject)) return;
 
-            InteractionMode mode = InteractionMode.InheritFromInteractor;
-            float effectiveHold = settings != null ? settings.holdDuration : 0.5f;
+            bool  useHold       = ResolveUseHold();
+            float effectiveHold = settings.holdDuration;
 
-            if (current is BaseInteractable baseInt)
+            if (current is IInteractableMode modeProvider
+                && modeProvider.TryGetHoldDuration(out float customHold))
             {
-                mode = baseInt.GetInteractionMode();
-                if (baseInt.TryGetHoldDuration(out float customHold))
-                {
-                    effectiveHold = customHold;
-                }
+                effectiveHold = customHold;
             }
-
-            bool useHold = settings != null && settings.holdToInteract;
-            if (mode == InteractionMode.Press) useHold = false;
-            else if (mode == InteractionMode.Hold) useHold = true;
 
             if (useHold)
             {
                 if (IsInteractHeld())
                 {
                     holdTimer += Time.deltaTime;
-
                     float progress = Mathf.Clamp01(holdTimer / Mathf.Max(0.0001f, effectiveHold));
-                    promptUI?.SetHoldProgress(progress);
+                    promptDisplay?.SetHoldProgress(progress);
 
                     if (holdTimer >= effectiveHold)
                     {
+                        var interacted = current;
                         current.Interact(gameObject);
                         holdTimer = 0f;
-                        promptUI?.SetHoldProgress(0f);
+                        promptDisplay?.SetHoldProgress(0f);
+                        OnInteracted?.Invoke(interacted);
                     }
                 }
                 else
                 {
                     holdTimer = 0f;
-                    promptUI?.SetHoldProgress(0f);
+                    promptDisplay?.SetHoldProgress(0f);
                 }
             }
             else
             {
                 if (WasInteractPressedThisFrame())
                 {
+                    var interacted = current;
                     current.Interact(gameObject);
+                    promptDisplay?.SetHoldProgress(0f);
+                    OnInteracted?.Invoke(interacted);
                 }
-
-                promptUI?.SetHoldProgress(0f);
             }
         }
 
-        private IInteractable FindInteractableInView()
-        {
-            Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-            RaycastHit hit;
+        // ── Detection ─────────────────────────────────────────────────────────────
 
+        private IInteractable BuiltInSphereCast()
+        {
+            if (playerCamera == null || settings == null) return null;
+
+            var ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
             bool didHit = Physics.SphereCast(
                 ray,
                 settings.sphereRadius,
-                out hit,
+                out RaycastHit hit,
                 settings.interactDistance,
                 settings.interactableMask,
-                QueryTriggerInteraction.Ignore
-            );
+                settings.triggerInteraction);
 
-            if (!didHit)
-                return null;
-
-            return hit.collider.GetComponentInParent<IInteractable>();
+            return didHit ? hit.collider.GetComponentInParent<IInteractable>() : null;
         }
 
-        // -------- Input Abstraction --------
+        private bool ResolveUseHold()
+        {
+            bool useHold = settings != null && settings.holdToInteract;
+            if (current is IInteractableMode modeProvider)
+            {
+                var mode = modeProvider.GetInteractionMode();
+                if (mode == InteractionMode.Press) useHold = false;
+                else if (mode == InteractionMode.Hold) useHold = true;
+            }
+            return useHold;
+        }
+
+        // ── Input abstraction ─────────────────────────────────────────────────────
 
         private bool WasInteractPressedThisFrame()
         {
-    #if ENABLE_INPUT_SYSTEM
-            if (HasValidNewInputAction())
-            {
-                // For button-type actions, .triggered is true on the frame performed
-                return interactAction.action.triggered;
-            }
-    #endif
-    #if ENABLE_LEGACY_INPUT_MANAGER || !ENABLE_INPUT_SYSTEM
-            // Fallback to legacy KeyCode
+#if ENABLE_INPUT_SYSTEM
+            if (HasValidInputAction()) return interactAction.action.triggered;
+#endif
             return Input.GetKeyDown(settings.interactKey);
-    #else
-            return false;
-    #endif
         }
 
         private bool IsInteractHeld()
         {
-    #if ENABLE_INPUT_SYSTEM
-            if (HasValidNewInputAction())
-            {
-                return interactAction.action.IsPressed();
-            }
-    #endif
-    #if ENABLE_LEGACY_INPUT_MANAGER || !ENABLE_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
+            if (HasValidInputAction()) return interactAction.action.IsPressed();
+#endif
             return Input.GetKey(settings.interactKey);
-    #else
-            return false;
-    #endif
         }
 
         private string GetPromptKeyGlyph()
         {
-    #if ENABLE_INPUT_SYSTEM
-            if (HasValidNewInputAction())
-            {
-                return interactAction.action.GetBindingDisplayString();
-            }
-    #endif
-            return settings.interactKey.ToString();
+#if ENABLE_INPUT_SYSTEM
+            if (HasValidInputAction()) return interactAction.action.GetBindingDisplayString();
+#endif
+            return settings?.interactKey.ToString() ?? "E";
         }
 
-    #if ENABLE_INPUT_SYSTEM
-        private bool HasValidNewInputAction()
-        {
-            return interactAction != null && interactAction.action != null;
-        }
-    #endif
+#if ENABLE_INPUT_SYSTEM
+        private bool HasValidInputAction() =>
+            interactAction != null && interactAction.action != null;
+#endif
     }
 }

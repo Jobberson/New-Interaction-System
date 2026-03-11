@@ -1,26 +1,17 @@
-
-using System;
-
 namespace Snog.InteractionSystem.Runtime.Data
 {
     /// <summary>
-    /// Defines how an interaction should be triggered.
+    /// Defines how an interaction is triggered on a per-object basis.
     /// </summary>
     public enum InteractionMode
     {
-        /// <summary>
-        /// Use the interactor's current setting (for example, global press/hold setting).
-        /// </summary>
+        /// <summary>Use the PlayerInteractor's global setting (holdToInteract in InteractionSettings).</summary>
         InheritFromInteractor = 0,
 
-        /// <summary>
-        /// Interaction triggers on a single press.
-        /// </summary>
+        /// <summary>Interaction triggers on a single button press, regardless of the global setting.</summary>
         Press = 1,
 
-        /// <summary>
-        /// Interaction triggers after holding for the configured duration.
-        /// </summary>
-        Hold = 2
+        /// <summary>Interaction triggers after holding for the configured duration, regardless of the global setting.</summary>
+        Hold = 2,
     }
 }
