@@ -1,8 +1,8 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-using Snog.InteractionSystem.Scripts.Data;
-using Snog.InteractionSystem.Scripts.Interfaces;
+using Snog.InteractionSystem.Runtime.Data;
+using Snog.InteractionSystem.Runtime.Interfaces;
 
 namespace Snog.InteractionSystem.Runtime.Helpers
 {
